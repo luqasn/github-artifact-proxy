@@ -47,7 +47,7 @@ docker_manifests:
   image_templates:
   - luqasn/github-artifact-proxy:{{ .Version }}-amd64
   - luqasn/github-artifact-proxy:{{ .Version }}-arm64v8
-- name_template: luqasn/github-artifact-proxy:{{ .Version }}:latest
+- name_template: luqasn/github-artifact-proxy:latest
   image_templates:
   - luqasn/github-artifact-proxy:{{ .Version }}-amd64
   - luqasn/github-artifact-proxy:{{ .Version }}-arm64v8
