@@ -9,33 +9,46 @@ builds:
     goarch:
       - amd64
       - arm64
+
 dockers:
-- image_templates: ["luqasn/github-artifact-proxy:{{ .Version }}"]
+
+- image_templates: ["luqasn/github-artifact-proxy:{{ .Version }}-amd64"]
   dockerfile: Dockerfile
+  use: buildx
+  goarch: amd64
   build_flag_templates:
+  - --platform=linux/amd64
   - --label=org.opencontainers.image.title={{ .ProjectName }}
   - --label=org.opencontainers.image.description={{ .ProjectName }}
   - --label=org.opencontainers.image.url=https://github.com/luqasn/github-artifact-proxy
   - --label=org.opencontainers.image.source=https://github.com/luqasn/github-artifact-proxy
   - --label=org.opencontainers.image.version={{ .Version }}
-  # - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+  - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
   - --label=org.opencontainers.image.revision={{ .FullCommit }}
   - --label=org.opencontainers.image.licenses=AGPL-3.0
-snapshot:
-  # Allows you to change the name of the generated snapshot
-  #
-  # Note that some pipes require this to be semantic version compliant (nfpm,
-  # for example).
-  #
-  # Default is `{{ .Version }}-SNAPSHOT-{{.ShortCommit}}`.
-  # name_template: '{{ incpatch .Version }}-SNAPSHOT'
-  name_template: '{{ .Version }}-SNAPSHOT-{{.ShortCommit}}'
-# nfpms:
-# - maintainer: 
-#   description: Sample project.
-#   homepage: https://github.com/caarlos0/tasktimer
-#   license: MIT
-#   formats:
-#   - deb
-#   - rpm
-#   - apk
+
+- image_templates: ["luqasn/github-artifact-proxy:{{ .Version }}-arm64v8"]
+  dockerfile: Dockerfile
+  use: buildx
+  goarch: arm64
+  build_flag_templates:
+  - --platform=linux/arm64/v8
+  - --label=org.opencontainers.image.title={{ .ProjectName }}
+  - --label=org.opencontainers.image.description={{ .ProjectName }}
+  - --label=org.opencontainers.image.url=https://github.com/luqasn/github-artifact-proxy
+  - --label=org.opencontainers.image.source=https://github.com/luqasn/github-artifact-proxy
+  - --label=org.opencontainers.image.version={{ .Version }}
+  - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+  - --label=org.opencontainers.image.revision={{ .FullCommit }}
+  - --label=org.opencontainers.image.licenses=AGPL-3.0
+
+docker_manifests:
+- name_template: luqasn/github-artifact-proxy:{{ .Version }}
+  image_templates:
+  - luqasn/github-artifact-proxy:{{ .Version }}-amd64
+  - luqasn/github-artifact-proxy:{{ .Version }}-arm64v8
+- name_template: luqasn/github-artifact-proxy:{{ .Version }}:latest
+  image_templates:
+  - luqasn/github-artifact-proxy:{{ .Version }}-amd64
+  - luqasn/github-artifact-proxy:{{ .Version }}-arm64v8
+
