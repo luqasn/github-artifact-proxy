@@ -25,27 +25,20 @@ const (
 )
 
 type Server struct {
-	*ServerConfig
+	*Config
 	router *httprouter.Router
 
 	m       sync.Mutex
 	clients map[*Target]*github.Client
 }
 
-type ServerConfig struct {
-	Config         *Config
-	BasePath       string
-	DownloadDir    string
-	GithubCacheTTL time.Duration
-}
-
-func NewServer(cfg *ServerConfig) *Server {
-	if !strings.HasPrefix(cfg.BasePath, "/") {
-		cfg.BasePath = "/" + cfg.BasePath
+func NewServer(cfg *Config) *Server {
+	if !strings.HasPrefix(cfg.Http.BasePath, "/") {
+		cfg.Http.BasePath = "/" + cfg.Http.BasePath
 	}
 	s := Server{
-		ServerConfig: cfg,
-		clients:      make(map[*Target]*github.Client),
+		Config:  cfg,
+		clients: make(map[*Target]*github.Client),
 	}
 
 	r := httprouter.New()
@@ -96,7 +89,7 @@ func (s *Server) handleTargetRequest(w http.ResponseWriter, r *http.Request, par
 	client := s.getClient(target)
 
 	var cachedRun *Run
-	if cachedRun, ok = target.runCache[runName]; !ok || time.Since(target.runCache[runName].FetchTime) > s.GithubCacheTTL {
+	if cachedRun, ok = target.runCache[runName]; !ok || time.Since(target.runCache[runName].FetchTime) > s.Github.CacheTTL {
 		var run *github.WorkflowRun
 		if runName == "latest" {
 			listOpts := github.ListWorkflowRunsOptions{}
@@ -303,7 +296,7 @@ func (s *Server) getClient(t *Target) *github.Client {
 		var client *http.Client
 		if t.Token != nil {
 			client = oauth2.NewClient(context.Background(), oauth2.StaticTokenSource(
-				&oauth2.Token{AccessToken: s.Config.Tokens[*t.Token]},
+				&oauth2.Token{AccessToken: s.Config.Github.Tokens[*t.Token]},
 			))
 		} else {
 			client = new(http.Client)
@@ -331,11 +324,11 @@ func (s *Server) getArtifactCacheDir(artifactID int64) string {
 }
 
 func (s *Server) buildURLPath(part string) string {
-	return path.Join(s.BasePath, part)
+	return path.Join(s.Http.BasePath, part)
 }
 
 func (s *Server) getFileServer(dir string) httprouter.Handle {
-	fs := http.StripPrefix(s.BasePath, http.FileServer(http.Dir(dir)))
+	fs := http.StripPrefix(s.Http.BasePath, http.FileServer(http.Dir(dir)))
 	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 		writeCacheHeaders(w)
 		fs.ServeHTTP(w, r)

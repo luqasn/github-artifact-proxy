@@ -1,5 +1,11 @@
-tokens:
-  pat: ghp_your-access-token-here
+http:
+  bind: 0.0.0.0:8080
+  base_path: /
+download_dir: '.'
+github:
+  cache_ttl: 5m
+  tokens:
+    pat: ghp_your-access-token-here
 targets:
   menta:
     # Required: A GitHub API token with at least the "public_repo" scope

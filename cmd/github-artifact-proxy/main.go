@@ -2,50 +2,55 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
-	"time"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
-var (
-	downloadDir  string
-	httpAddr     string
-	httpBasePath string
-	configFile   string
-	ghCacheTTL   time.Duration
-)
+var configFile string
+var envPrefix string
 
 func main() {
-	flag.StringVar(&downloadDir, "download-dir", "", "the directory to download artifacts to (required)")
-	flag.DurationVar(&ghCacheTTL, "github-api-cache-ttl", 5*time.Minute, "the duration after which cached GitHub API responses are invalidated")
-	flag.StringVar(&httpAddr, "http-addr", "", "the adddress the HTTP server should listen on (required)")
-	flag.StringVar(&httpBasePath, "http-base-path", "/", "the base path prefixed to all URL paths")
-	flag.StringVar(&configFile, "config", "", "the filename of the configuration file (required)")
+	flag.StringVar(&configFile, "config", "", "the filename of the configuration file")
+	flag.StringVar(&envPrefix, "env-prefix", "", "the prefix to use for reading environment variables")
 	flag.Parse()
 
-	if downloadDir == "" {
-		log.Fatal("flag -download-dir is required")
-	}
-	if httpAddr == "" {
-		log.Fatal("flag -http-addr is required")
-	}
-	if configFile == "" {
-		log.Fatal("flag -config is required")
+	if configFile != "" {
+		viper.SetConfigFile(configFile)
+	} else {
+		viper.SetConfigName("config") // name of config file (without extension)
+		viper.SetConfigType("yaml")   // REQUIRED if the config file does not have the extension in the name
+		viper.AddConfigPath(".")      // optionally look for config in the working directory
 	}
 
-	cfg, err := LoadConfig(configFile)
-	if err != nil {
-		log.WithError(err).Fatal("unable to read config file")
+	viper.SetEnvPrefix(envPrefix)
+	viper.AutomaticEnv()
+
+	viper.SetDefault("Http.Bind", "0.0.0.0:8080")
+	viper.SetDefault("Http.BasePath", "/")
+	viper.SetDefault("Github.Tokens", map[string]string{})
+	viper.SetDefault("Github.CacheTTL", "5m")
+	viper.SetDefault("DownloadDir", "/tmp")
+
+	err := viper.ReadInConfig() // Find and read the config file
+	if err != nil {             // Handle errors reading the config file
+		panic(fmt.Errorf("fatal error loading config: %w", err))
+	}
+	log.Infof("Using config file: %q", viper.ConfigFileUsed())
+
+	var cfg Config
+	if err := viper.Unmarshal(&cfg); err != nil {
+		panic(fmt.Errorf("error loading config: %w", err))
 	}
 
-	log.WithField("addr", httpAddr).Info("starting http server")
+	if err := cfg.Validate(); err != nil {
+		panic(fmt.Errorf("invalid config: %w", err))
+	}
 
-	server := NewServer(&ServerConfig{
-		Config:         cfg,
-		BasePath:       httpBasePath,
-		DownloadDir:    downloadDir,
-		GithubCacheTTL: ghCacheTTL,
-	})
-	http.ListenAndServe(httpAddr, server)
+	log.WithField("addr", cfg.Http.Bind).Info("starting http server")
+
+	server := NewServer(&cfg)
+	log.Fatal(http.ListenAndServe(cfg.Http.Bind, server))
 }
