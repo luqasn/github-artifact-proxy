@@ -42,6 +42,9 @@ func NewServer(cfg *Config) *Server {
 	}
 
 	r := httprouter.New()
+	r.GET(s.buildURLPath("/health"), func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		_, _ = w.Write([]byte("ok"))
+	})
 
 	fs := s.getFileServer(s.DownloadDir)
 	r.GET(s.buildURLPath("/artifacts/*filename"), fs)
