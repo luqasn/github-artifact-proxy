@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"net/http"
 	"os"
@@ -46,7 +45,6 @@ func main() {
 
 	if configFromEnvVariable != "" {
 		rawConfig := os.Getenv(configFromEnvVariable)
-		log.Infof("Reading %q", rawConfig)
 		err := k.Load(rawbytes.Provider([]byte(rawConfig)), parser)
 		if err != nil {
 			log.Fatalf("fatal error loading config from env: %v", err)
@@ -73,9 +71,6 @@ func main() {
 	if err := cfg.Validate(); err != nil {
 		log.Fatalf("invalid config: %w", err)
 	}
-
-	jsonConfig, _ := json.MarshalIndent(cfg, "", "\t")
-	log.WithField("config", string(jsonConfig)).Infof("Loaded config")
 
 	log.WithField("addr", cfg.Http.Bind).Info("starting http server")
 
