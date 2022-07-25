@@ -15,43 +15,43 @@ type Run struct {
 }
 
 type LatestFilter struct {
-	Branch *string
-	Event  *string
-	Status *string
+	Branch *string `koanf:"branch"`
+	Event  *string `koanf:"event"`
+	Status *string `koanf:"status"`
 }
 
 type Target struct {
-	Token        *string
-	Owner        string
-	Repo         string
-	Filename     string
-	LatestFilter *LatestFilter
+	Token        *string       `koanf:"token"`
+	Owner        string        `koanf:"owner"`
+	Repo         string        `koanf:"repo"`
+	Filename     string        `koanf:"filename"`
+	LatestFilter *LatestFilter `koanf:"latest_filter"`
 
 	lockChan chan struct{}
 	runCache map[string]*Run
 }
 
 type Webhook struct {
-	Path   string
-	Secret string
+	Path   string `koanf:"path"`
+	Secret string `koanf:"secret"`
 }
 
 type Http struct {
-	Bind     string
-	BasePath string
+	Bind     string `koanf:"bind"`
+	BasePath string `koanf:"base_path"`
 }
 
 type Github struct {
-	Tokens   map[string]string
-	CacheTTL time.Duration
+	Tokens   map[string]string `koanf:"tokens"`
+	CacheTTL time.Duration     `koanf:"cache_ttl"`
 }
 
 type Config struct {
-	DownloadDir string
-	Webhook     *Webhook
-	Http        *Http
-	Github      *Github
-	Targets     map[string]*Target
+	DownloadDir string             `koanf:"download_dir"`
+	Webhook     *Webhook           `koanf:"webhook"`
+	Http        Http               `koanf:"http"`
+	Github      Github             `koanf:"github"`
+	Targets     map[string]*Target `koanf:"targets"`
 }
 
 func (t *Target) Lock(ctx context.Context) error {

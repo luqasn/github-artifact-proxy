@@ -1,53 +1,81 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
-	"fmt"
 	"net/http"
+	"os"
+	"strings"
+	"time"
 
+	"github.com/knadh/koanf"
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/env"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/providers/rawbytes"
+	"github.com/knadh/koanf/providers/structs"
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
-var configFile string
-var envPrefix string
+var (
+	configFile            string
+	envPrefix             string
+	configFromEnvVariable string
+	k                     = koanf.New(".")
+	parser                = yaml.Parser()
+)
 
 func main() {
-	flag.StringVar(&configFile, "config", "", "the filename of the configuration file")
-	flag.StringVar(&envPrefix, "env-prefix", "", "the prefix to use for reading environment variables")
+	flag.StringVar(&configFile, "config", "config.yml", "the filename of the configuration file")
+	flag.StringVar(&envPrefix, "env-prefix", "GAP", "the prefix to use for reading environment variables")
+	flag.StringVar(&configFromEnvVariable, "config-from-env-var", "", "name of env variable to load config from (instead of file)")
 	flag.Parse()
 
-	if configFile != "" {
-		viper.SetConfigFile(configFile)
+	if err := k.Load(structs.Provider(
+		Config{
+			Http: Http{
+				Bind:     ":8080",
+				BasePath: "/",
+			},
+			Github: Github{
+				CacheTTL: 5 * time.Minute,
+			},
+		}, ""), nil); err != nil {
+		log.Fatalf("fatal error loading default values: %v", err)
+	}
+
+	if configFromEnvVariable != "" {
+		rawConfig := os.Getenv(configFromEnvVariable)
+		log.Infof("Reading %q", rawConfig)
+		err := k.Load(rawbytes.Provider([]byte(rawConfig)), parser)
+		if err != nil {
+			log.Fatalf("fatal error loading config from env: %v", err)
+		}
 	} else {
-		viper.SetConfigName("config") // name of config file (without extension)
-		viper.SetConfigType("yaml")   // REQUIRED if the config file does not have the extension in the name
-		viper.AddConfigPath(".")      // optionally look for config in the working directory
+		err := k.Load(file.Provider(configFile), parser)
+		if err != nil {
+			log.Fatalf("fatal error loading config: %v", err)
+		}
 	}
 
-	viper.SetEnvPrefix(envPrefix)
-	viper.AutomaticEnv()
-
-	viper.SetDefault("Http.Bind", "0.0.0.0:8080")
-	viper.SetDefault("Http.BasePath", "/")
-	viper.SetDefault("Github.Tokens", map[string]string{})
-	viper.SetDefault("Github.CacheTTL", "5m")
-	viper.SetDefault("DownloadDir", "/tmp")
-
-	err := viper.ReadInConfig() // Find and read the config file
-	if err != nil {             // Handle errors reading the config file
-		panic(fmt.Errorf("fatal error loading config: %w", err))
+	if err := k.Load(env.Provider(envPrefix+"_", ".", func(s string) string {
+		return strings.Replace(strings.ToLower(
+			strings.TrimPrefix(s, envPrefix+"_")), "_", ".", -1)
+	}), nil); err != nil {
+		log.Fatalf("error loading config: %v", err)
 	}
-	log.Infof("Using config file: %q", viper.ConfigFileUsed())
 
 	var cfg Config
-	if err := viper.Unmarshal(&cfg); err != nil {
-		panic(fmt.Errorf("error loading config: %w", err))
+	if err := k.Unmarshal("", &cfg); err != nil {
+		log.Fatalf("error loading config: %w", err)
 	}
 
 	if err := cfg.Validate(); err != nil {
-		panic(fmt.Errorf("invalid config: %w", err))
+		log.Fatalf("invalid config: %w", err)
 	}
+
+	jsonConfig, _ := json.MarshalIndent(cfg, "", "\t")
+	log.WithField("config", string(jsonConfig)).Infof("Loaded config")
 
 	log.WithField("addr", cfg.Http.Bind).Info("starting http server")
 
