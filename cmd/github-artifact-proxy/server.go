@@ -215,7 +215,7 @@ func (s *Server) handleTargetRequest(w http.ResponseWriter, r *http.Request, par
 	}
 
 	dlDir := s.getArtifactCacheDir(*cachedRun.Artifact.ID)
-	dlPath := s.buildURLPath(fmt.Sprintf("/artifacts/%d/%s", *cachedRun.Artifact.ID, filename))
+	dlPath := s.buildURLPath(fmt.Sprintf("/artifacts/%d/%s?download_token=%s", *cachedRun.Artifact.ID, filename, s.Config.Http.DownloadToken))
 	if _, err := os.Stat(dlDir); err == nil {
 		logCtx.WithFields(log.Fields{
 			"id": *cachedRun.Artifact.ID,
