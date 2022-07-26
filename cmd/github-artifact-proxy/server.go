@@ -47,11 +47,22 @@ func NewServer(cfg *Config) *Server {
 	})
 
 	fs := s.getFileServer(s.DownloadDir)
-	r.GET(s.buildURLPath("/artifacts/*filename"), fs)
-	r.GET(s.buildURLPath("/targets/:target/runs/:run/artifacts/:artifact/*filename"), s.handleTargetRequest)
+	r.GET(s.buildURLPath("/artifacts/*filename"), tokenCheckMiddleware(s.Config.Http.DownloadToken, fs))
+	r.GET(s.buildURLPath("/targets/:target/runs/:run/artifacts/:artifact/*filename"), tokenCheckMiddleware(s.Config.Http.DownloadToken, s.handleTargetRequest))
 
 	s.router = r
 	return &s
+}
+
+func tokenCheckMiddleware(requiredAuthToken string, next httprouter.Handle) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+		providedToken := r.URL.Query().Get("download_token")
+		if requiredAuthToken != "" && providedToken != requiredAuthToken {
+			httpError(w, http.StatusUnauthorized)
+		} else {
+			next(w, r, params)
+		}
+	}
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

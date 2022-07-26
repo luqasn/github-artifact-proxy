@@ -39,6 +39,8 @@ type Webhook struct {
 type Http struct {
 	Bind     string `koanf:"bind"`
 	BasePath string `koanf:"base_path"`
+	// require callers to present this download_token in query args
+	DownloadToken string `koanf:"download_token"`
 }
 
 type Github struct {
