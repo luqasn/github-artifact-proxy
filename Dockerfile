@@ -5,4 +5,6 @@ FROM scratch
 COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY github-artifact-proxy /
 
+VOLUME [ "/tmp" ]
+
 ENTRYPOINT ["/github-artifact-proxy"]

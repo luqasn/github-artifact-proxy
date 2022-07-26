@@ -1,7 +1,7 @@
 http:
   bind: 0.0.0.0:8080
   base_path: /
-download_dir: '.'
+download_dir: '/tmp'
 github:
   cache_ttl: 5m
   tokens:
